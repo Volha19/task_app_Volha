@@ -13,9 +13,8 @@ jobs:
       with: 
           python-version: '3.12'
     - run: | 
-        can python -m pip install --upgrade pip
-            pip install -r services/tasks-api/requirements.txt
-            pip install -r services/title-normalizer/requirements.txt
+            python -m pip install -r services/tasks-api/requirements.txt
+            python -m pip install -r services/title-normalizer/requirements.txt
   run_tests:
     runs-on: ubuntu-latest
     steps:
