@@ -1,0 +1,11 @@
+name: Checking app
+on:   
+  push:
+    branches: [main]
+permissions:
+  contents: read
+jobs:
+  <run_test>:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
