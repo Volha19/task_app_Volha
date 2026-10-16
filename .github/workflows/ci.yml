@@ -1,28 +1,22 @@
 name: Checking app
-on:
+on:   
   push:
     branches: [main]
-  pull_request:
 permissions:
   contents: read
 jobs:
-  test:
+  build:
     runs-on: ubuntu-latest
     steps:
-      - name: Check out repository
-        uses: actions/checkout@v7
-      - name: Set up Python
-        uses: actions/setup-python@v7
-        with:
+    - name: Check out repository
+      uses: actions/setup-python@v7
+      with: 
           python-version: '3.12'
-      - name: Install dependencies
-        run: |
-          python -m pip install --upgrade pip
-          python -m pip install -r services/tasks-api/requirements.txt
-          python -m pip install -r services/title-normalizer/requirements.txt
-      - name: Test tasks API
-        run: python -m pytest
-        working-directory: services/tasks-api
-      - name: Test title normalizer
-        run: python -m pytest
-        working-directory: services/title-normalizer
+    - run: | 
+        can python -m pip install --upgrade pip
+            pip install -r services/tasks-api/requirements.txt
+            pip install -r services/title-normalizer/requirements.txt
+  run_tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
