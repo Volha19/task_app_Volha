@@ -1,3 +1,9 @@
+name: Checking app
+on:   
+  push:
+    branches: [main]
+permissions:
+  contents: read
 jobs:
   run_tests:
     strategy:
