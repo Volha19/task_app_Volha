@@ -44,15 +44,19 @@ jobs:
       pages: write # default for Github Workflow token is none so we cannot write to github pages without it
       id-token: write
     steps:
+      - uses: actions/checkout@v7
       - uses: actions/download-artifact@v7
         with:
-          name: tasks-api-3.12-bandit-report
+          pattern: "*-3.12-bandit-report"
           path: _site
+          merge-multiple: true
+      - run: cp docs.md README.md _site/
       - run: |
           cat > _site/index.html << 'EOF'
           <h1>Bandit reports</h1>
           <p><a href="tasks-api-3.12-bandit-report.html">tasks-api</a></p>
           <p><a href="title-normalizer-3.12-bandit-report.html">title-normalizer</a></p>
+          <p><a href="docs.md">Project documentation</a></p>
           EOF
       -  uses: actions/upload-pages-artifact@v5
          with:
