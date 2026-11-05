@@ -12,7 +12,7 @@ env:
 
 jobs:
   build-and-push:
-    runs-on: smth
+    runs-on: ubuntu-latest
     strategy:
       matrix:
         service: [tasks-api, title-normalizer]
