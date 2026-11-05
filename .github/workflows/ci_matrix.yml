@@ -15,9 +15,18 @@ jobs:
         python-version: ["3.10", "3.11", "3.12"] # ${{matrix.python-version}}
     steps:
       - uses: actions/checkout@v7
+      - name: Build image
+        runs-on: ubuntu-latest
+        statagy:
+          matrix:
+            service: [tasks-api, title-normalizer]
+        steps:
+          -uses: actions/checkout@v7
+          -run: docker build -t ${{matrix.service}} services/${{matrix.service}}
       - uses: actions/setup-python@v7
         with:
           python-version: ${{matrix.python-version}}
+      - run: pip install -r services/${{matrix.service}}/requirements.txt
       - run: pip install -r services/${{matrix.service}}/requirements.txt
       - run: pytest -rA services/${{matrix.service}} > ${{matrix.service}}-${{matrix.python-version}}-test-report.txt
       - uses: actions/upload-artifact@v7

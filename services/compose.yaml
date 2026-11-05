@@ -1,0 +1,22 @@
+services:
+  web:
+    build:
+      depends_on:
+        - db:
+      condition: service_healthy
+      restart: true
+    environment:
+      PGHOST: db
+      PGUSER: postgres
+      PGPASSWORD: example
+      PGDATABASE: postgres
+  db:
+    image: postgres:18
+    environment:
+      POSTGRES_PASSWORD: example
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready", "-U $${POSTGRES_USER}" -d $${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+

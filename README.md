@@ -56,3 +56,15 @@ Run in each service folder:
 ```bash
 pytest
 ```
+
+## Publish container images
+
+Pushing to `main` runs `.github/workflows/publish-images.yml`, which builds and
+publishes both service images to GitHub Container Registry:
+
+- `ghcr.io/<owner>/<repository>-tasks-api`
+- `ghcr.io/<owner>/<repository>-title-normalizer`
+
+The workflow uses the automatic `GITHUB_TOKEN`; its publish job grants only
+`contents: read` and `packages: write`. The repository's Actions settings must
+allow workflows to write packages.
