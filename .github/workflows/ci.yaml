@@ -1,0 +1,153 @@
+name: Test and Scan
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    types: [opened, synchronize, closed]
+    branches:
+      - main
+
+jobs:
+  run_tests:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        service: [tasks-api, title-normalizer] # ${{matrix.service}}
+        python-version: ["3.10", "3.11", "3.12"] # ${{matrix.python-version}}
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: ${{matrix.python-version}}
+      - run: pip install -r services/${{matrix.service}}/requirements.txt
+      - run: pytest -rA services/${{matrix.service}} > ${{matrix.service}}-${{matrix.python-version}}-test-report.txt
+      - uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: ${{matrix.service}}-${{matrix.python-version}} test report
+          path: ${{matrix.service}}-${{matrix.python-version}}-test-report.txt
+      - run: pip install bandit
+      - run: bandit -r services/${{matrix.service}} -f html -o ${{matrix.service}}-${{matrix.python-version}}-bandit-report.html
+        continue-on-error: true
+      - name: Upload Bandit Report as Artifact
+        uses: actions/upload-artifact@v7
+        with:
+          name: ${{matrix.service}}-${{matrix.python-version}}-bandit-report
+          path: ${{matrix.service}}-${{matrix.python-version}}-bandit-report.html
+
+  generate_api_docs:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        service: [tasks-api, title-normalizer] # ${{matrix.service}}
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.12"
+      - run: pip install -r services/${{matrix.service}}/requirements.txt
+      - run: pip install pdoc
+      - run: pdoc app -o apidocs
+        working-directory: services/${{matrix.service}}
+      - uses: actions/upload-artifact@v7
+        with:
+          name: ${{matrix.service}}-api-docs
+          path: services/${{matrix.service}}/apidocs
+
+  build_images:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        service: [tasks-api, title-normalizer] # ${{matrix.service}}
+    steps:
+      - uses: actions/checkout@v7
+      - run: docker build -t ${{matrix.service}} services/${{matrix.service}}
+
+  scan_images:
+    needs: build_images
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    strategy:
+      fail-fast: false
+      matrix:
+        service: [tasks-api, title-normalizer] # ${{matrix.service}}
+    steps:
+      - uses: actions/checkout@v7
+      - run: docker build -t ${{matrix.service}} services/${{matrix.service}}
+      # trivy-action v0.36.0
+      - uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25
+        with:
+          image-ref: ${{matrix.service}}
+          severity: CRITICAL,HIGH
+          ignore-unfixed: true
+          exit-code: "1"
+
+  publish_images:
+    needs: scan_images
+    if: github.event_name == 'push'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    strategy:
+      matrix:
+        service: [tasks-api, title-normalizer] # ${{matrix.service}}
+    steps:
+      - uses: actions/checkout@v7
+      - run: |
+          echo "${{ secrets.GITHUB_TOKEN }}" |
+            docker login ghcr.io -u ${{ github.actor }} --password-stdin
+      - run: |
+          IMAGE="ghcr.io/${GITHUB_REPOSITORY_OWNER,,}/${{matrix.service}}"
+          IMAGE="$IMAGE:${{ github.sha }}"
+          SOURCE="https://github.com/${{ github.repository }}"
+          docker build \
+            --label "org.opencontainers.image.source=$SOURCE" \
+            -t "$IMAGE" services/${{matrix.service}}
+          docker push "$IMAGE"
+
+  deploy:
+    needs: [run_tests, generate_api_docs]
+    if: github.event.pull_request.merged == true
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/download-artifact@v8
+        with:
+          name: tasks-api-3.12-bandit-report
+          path: _site
+      - uses: actions/download-artifact@v8
+        with:
+          name: title-normalizer-3.12-bandit-report
+          path: _site
+      - uses: actions/download-artifact@v8
+        with:
+          name: tasks-api-api-docs
+          path: _site/tasks-api-apidocs
+      - uses: actions/download-artifact@v8
+        with:
+          name: title-normalizer-api-docs
+          path: _site/title-normalizer-apidocs
+      - run: |
+          cat > _site/index.html <<'EOF'
+          <h1>Bandit reports</h1>
+          <p><a href="tasks-api-3.12-bandit-report.html">tasks-api</a></p>
+          <p><a href="title-normalizer-3.12-bandit-report.html">title-normalizer</a></p>
+          <h1>API docs</h1>
+          <p><a href="tasks-api-apidocs/index.html">tasks-api</a></p>
+          <p><a href="title-normalizer-apidocs/index.html">title-normalizer</a></p>
+          EOF
+      - uses: actions/upload-pages-artifact@v5
+        with:
+          path: _site
+      - id: deployment
+        uses: actions/deploy-pages@v5
