@@ -7,15 +7,40 @@ terraform{
     }
 }
 provider "docker" {}
-resource "docker_image" "web"{
-    name = "nginx:1.31.9"
+
+resource "docker_image" "nginx" {
+  name         = "nginx:latest"
+  keep_locally = false
 }
 
-resource "docker_container" "web" {
-    name = "demo-web"
-    image = docker_image.web.image_id
-    ports{
-        internal = 80
-        external = 8080
+resource "docker_image" "tasks-api" {
+  name  = "tasks-api"  
+  build{
+    context = "../services/tasks-api"
+    tag =["tasks-api:local
+    ]
+    build_args = {
+
     }
+  }
+
+resource "docker_image" "title-normilizer" {
+  name  = "title-normilizer"  
+  image = "title-normilizer:local"
+  ports {
+    internal = 5001
+    external = 8000
+  }
+}
+
+resource "docker_container" "tasks-api" {
+  name = "title-normilizer"
+  image = docker_image.tasks-tasks-api.image_id
+  env = [
+    "NORMALIZER_URL =http://${docker_container.normilizer.name}:5001" 
+  ]
+  ports {
+    internal = 5001
+    external = 5001
+  }
 }
