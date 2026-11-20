@@ -17,19 +17,27 @@ resource "docker_image" "tasks-api" {
   name  = "tasks-api"  
   build{
     context = "../services/tasks-api"
-    tag =["tasks-api:local
-    ]
+    tag =["tasks-api:local"]
     build_args = {
-
+      foo : "zoo"
+    }
+    label = {
+      author : "zoo"
     }
   }
+}
 
 resource "docker_image" "title-normilizer" {
   name  = "title-normilizer"  
-  image = "title-normilizer:local"
-  ports {
-    internal = 5001
-    external = 8000
+  build{
+    context = "../services/title-normilizer"
+    tag =["title-normilizer:local"]
+    build_args = {
+      foo : "zoo"
+    }
+    label = {
+      author : "zoo"
+    }
   }
 }
 
